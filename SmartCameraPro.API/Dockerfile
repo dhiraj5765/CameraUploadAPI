@@ -1,24 +1,20 @@
-﻿# Use .NET 8 SDK to build
+﻿# Build Stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution & project files
-COPY SmartCameraPro.API/SmartCameraPro.API.csproj SmartCameraPro.API/
+COPY SmartCameraPro.API/*.csproj SmartCameraPro.API/
 RUN dotnet restore SmartCameraPro.API/SmartCameraPro.API.csproj
 
-# Copy everything
 COPY . .
+WORKDIR /src/SmartCameraPro.API
+RUN dotnet publish -c Release -o /app
 
-# Build API
-RUN dotnet publish SmartCameraPro.API/SmartCameraPro.API.csproj -c Release -o /app/publish
-
-# Runtime image
+# Runtime Stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
-COPY --from=build /app/publish .
+COPY --from=build /app .
 
 EXPOSE 8080
-
 ENV ASPNETCORE_URLS=http://+:8080
 
-ENTRYPOINT ["dotnet", "SmartCameraPro.API.dll"]
+ENTRYPOINT ["dotnet","SmartCameraPro.API.dll"]
