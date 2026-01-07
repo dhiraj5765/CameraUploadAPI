@@ -6,15 +6,19 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
+// Ensure Uploads folder exists
+var uploadPath = Path.Combine(builder.Environment.ContentRootPath, "Uploads");
+Directory.CreateDirectory(uploadPath);
+
 app.UseHttpsRedirection();
 
-// Allow serving static files (images)
+// Default static files
 app.UseStaticFiles();
 
+// Serve uploads folder
 app.UseStaticFiles(new StaticFileOptions
 {
-    FileProvider = new PhysicalFileProvider(
-        Path.Combine(builder.Environment.ContentRootPath, "Uploads")),
+    FileProvider = new PhysicalFileProvider(uploadPath),
     RequestPath = "/uploads"
 });
 
