@@ -1,4 +1,6 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using System.Net.Http.Headers;
 
 namespace SmartCameraPro.API.Controllers
 {
@@ -19,14 +21,14 @@ namespace SmartCameraPro.API.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
+            // 📁 Create Upload Folder
             var uploadFolder = Path.Combine(_env.ContentRootPath, "Uploads");
 
             if (!Directory.Exists(uploadFolder))
                 Directory.CreateDirectory(uploadFolder);
 
-            // ⭐ FIXED FILE NAME ⭐
+            // 📸 Save Image
             var fileName = "photo" + Path.GetExtension(file.FileName);
-
             var filePath = Path.Combine(uploadFolder, fileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
@@ -34,11 +36,49 @@ namespace SmartCameraPro.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
+            // 🤖 AI Processing (HuggingFace)
+            var aiResult = await AnalyzeImage(filePath);
+
+            // 🔙 Send Response to WPF
             return Ok(new
             {
                 folder = "Uploads",
-                savedAs = fileName
+                savedAs = fileName,
+                aiDescription = aiResult
             });
+        }
+
+        // ============================
+        // 🤖 AI via HuggingFace
+        // ============================
+        private async Task<string> AnalyzeImage(string filePath)
+        {
+            string hfToken = "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"; // <-- replace
+
+            using var client = new HttpClient();
+
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", hfToken);
+
+            var url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large";
+
+            byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+
+            using var content = new ByteArrayContent(imageBytes);
+            content.Headers.ContentType =
+                new MediaTypeHeaderValue("application/octet-stream");
+
+            var response = await client.PostAsync(url, content);
+
+            var json = await response.Content.ReadAsStringAsync();
+
+            // if model is still loading or failure — avoid crash
+            if (!response.IsSuccessStatusCode)
+                return $"AI Error: {json}";
+
+            dynamic data = JsonConvert.DeserializeObject(json);
+
+            return data[0].generated_text.ToString();
         }
     }
 }
