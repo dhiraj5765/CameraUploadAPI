@@ -39,7 +39,7 @@ namespace SmartCameraPro.API.Controllers
             // 🤖 AI Processing (HuggingFace)
             var aiResult = await AnalyzeImage(filePath);
 
-            // 🔙 Send Response to WPF
+            // 🔙 Send Response to client
             return Ok(new
             {
                 folder = "Uploads",
@@ -49,18 +49,19 @@ namespace SmartCameraPro.API.Controllers
         }
 
         // ============================
-        // 🤖 AI via HuggingFace
+        // 🤖 AI via HuggingFace Router
         // ============================
         private async Task<string> AnalyzeImage(string filePath)
         {
-            string hfToken = "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"; // <-- replace
+            string hfToken = "YOUR_REAL_TOKEN_HERE"; // <-- replace locally
 
             using var client = new HttpClient();
 
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", hfToken);
 
-            var url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large";
+            // ✅ NEW REQUIRED URL
+            var url = "https://router.huggingface.co/models/Salesforce/blip-image-captioning-large";
 
             byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
@@ -69,10 +70,8 @@ namespace SmartCameraPro.API.Controllers
                 new MediaTypeHeaderValue("application/octet-stream");
 
             var response = await client.PostAsync(url, content);
-
             var json = await response.Content.ReadAsStringAsync();
 
-            // if model is still loading or failure — avoid crash
             if (!response.IsSuccessStatusCode)
                 return $"AI Error: {json}";
 
