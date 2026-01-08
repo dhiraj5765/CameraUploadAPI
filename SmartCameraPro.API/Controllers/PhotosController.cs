@@ -53,7 +53,7 @@ namespace SmartCameraPro.API.Controllers
         // ============================
         private async Task<string> AnalyzeImage(string filePath)
         {
-            string hfToken = "YOUR_REAL_TOKEN_HERE"; // <-- replace locally
+            string hfToken ="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"; // <-- replace locally
 
             using var client = new HttpClient();
 
