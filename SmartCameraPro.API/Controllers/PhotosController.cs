@@ -15,19 +15,21 @@ namespace SmartCameraPro.API.Controllers
             _env = env;
         }
 
+        // ============================
+        // 📸 Upload Image API
+        // ============================
         [HttpPost]
         public async Task<IActionResult> Upload([FromForm] IFormFile file)
         {
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            // 📁 Create Upload Folder
+            // 📁 Create Uploads folder
             var uploadFolder = Path.Combine(_env.ContentRootPath, "Uploads");
-
             if (!Directory.Exists(uploadFolder))
                 Directory.CreateDirectory(uploadFolder);
 
-            // 📸 Save Image
+            // 📸 Save image
             var fileName = "photo" + Path.GetExtension(file.FileName);
             var filePath = Path.Combine(uploadFolder, fileName);
 
@@ -36,10 +38,10 @@ namespace SmartCameraPro.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            // 🤖 AI Processing (HuggingFace)
+            // 🤖 AI Analysis
             var aiResult = await AnalyzeImage(filePath);
 
-            // 🔙 Send Response to client
+            // 🔙 Response to client
             return Ok(new
             {
                 folder = "Uploads",
@@ -49,18 +51,22 @@ namespace SmartCameraPro.API.Controllers
         }
 
         // ============================
-        // 🤖 AI via HuggingFace Router
+        // 🤖 HuggingFace AI Method
         // ============================
         private async Task<string> AnalyzeImage(string filePath)
         {
-            string hfToken ="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"; // <-- replace locally
+            // 🔐 Get token from environment variable
+            string hfToken = Environment.GetEnvironmentVariable("smart-camera");
+
+            if (string.IsNullOrEmpty(hfToken))
+                return "AI Error: HuggingFace token not found";
 
             using var client = new HttpClient();
 
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", hfToken);
 
-            // ✅ NEW REQUIRED URL
+            // ✅ Correct HuggingFace Router URL
             var url = "https://router.huggingface.co/models/Salesforce/blip-image-captioning-large";
 
             byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
@@ -73,7 +79,7 @@ namespace SmartCameraPro.API.Controllers
             var json = await response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)
-                return $"AI Error: {json}";
+                return $"AI Error: {response.StatusCode} - {json}";
 
             dynamic data = JsonConvert.DeserializeObject(json);
 
