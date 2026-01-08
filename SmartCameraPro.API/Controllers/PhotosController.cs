@@ -68,7 +68,8 @@ namespace SmartCameraPro.API.Controllers
                 new AuthenticationHeaderValue("Bearer", hfToken);
 
             // ✅ Correct HuggingFace Router URL
-            var url = "https://router.huggingface.co/models/Salesforce/blip-image-captioning-large";
+          var url = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-large";
+
 
             byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
