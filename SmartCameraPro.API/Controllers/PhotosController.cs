@@ -24,12 +24,10 @@ namespace SmartCameraPro.API.Controllers
             if (file == null || file.Length == 0)
                 return BadRequest("No file uploaded");
 
-            // 📁 Create Uploads folder
             var uploadFolder = Path.Combine(_env.ContentRootPath, "Uploads");
             if (!Directory.Exists(uploadFolder))
                 Directory.CreateDirectory(uploadFolder);
 
-            // 📸 Save image
             var fileName = "photo" + Path.GetExtension(file.FileName);
             var filePath = Path.Combine(uploadFolder, fileName);
 
@@ -38,10 +36,8 @@ namespace SmartCameraPro.API.Controllers
                 await file.CopyToAsync(stream);
             }
 
-            // 🤖 AI Analysis
             var aiResult = await AnalyzeImage(filePath);
 
-            // 🔙 Response to client
             return Ok(new
             {
                 folder = "Uploads",
@@ -51,36 +47,42 @@ namespace SmartCameraPro.API.Controllers
         }
 
         // ============================
-        // 🤖 HuggingFace AI Method
+        // 🤖 HuggingFace AI (STABLE)
         // ============================
-       private async Task<string> AnalyzeImage(string filePath)
-{
-    string hfToken = Environment.GetEnvironmentVariable("HF_TOKEN");
+        private async Task<string> AnalyzeImage(string filePath)
+        {
+            string hfToken = Environment.GetEnvironmentVariable("HF_TOKEN");
 
-    if (string.IsNullOrWhiteSpace(hfToken))
-        return "AI Error: HuggingFace token not found";
+            if (string.IsNullOrWhiteSpace(hfToken))
+                return "AI Error: HuggingFace token not found";
 
-    using var client = new HttpClient();
-    client.DefaultRequestHeaders.Authorization =
-        new AuthenticationHeaderValue("Bearer", hfToken);
+            using var client = new HttpClient();
+            client.Timeout = TimeSpan.FromSeconds(90);
 
-    // ✅ THIS IS THE CRITICAL LINE
-    var url = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-large";
+            client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", hfToken);
 
-    byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+            // ✅ STABLE ENDPOINT FOR FREE TOKENS
+            var url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large";
 
-    using var content = new ByteArrayContent(imageBytes);
-    content.Headers.ContentType =
-        new MediaTypeHeaderValue("application/octet-stream");
+            byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
-    var response = await client.PostAsync(url, content);
-    var json = await response.Content.ReadAsStringAsync();
+            using var content = new ByteArrayContent(imageBytes);
+            content.Headers.ContentType =
+                new MediaTypeHeaderValue("application/octet-stream");
 
-    if (!response.IsSuccessStatusCode)
-        return $"AI Error: {response.StatusCode} - {json}";
+            var response = await client.PostAsync(url, content);
+            var json = await response.Content.ReadAsStringAsync();
 
-    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
-    return data[0].generated_text.ToString();
-}
-}
+            // 🟡 Model cold start handling
+            if (json.Contains("loading", StringComparison.OrdinalIgnoreCase))
+                return "AI is loading, please try again in a few seconds";
+
+            if (!response.IsSuccessStatusCode)
+                return $"AI Error: {response.StatusCode} - {json}";
+
+            dynamic data = JsonConvert.DeserializeObject(json);
+            return data[0].generated_text.ToString();
+        }
+    }
 }
