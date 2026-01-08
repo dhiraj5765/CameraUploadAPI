@@ -47,7 +47,7 @@ namespace SmartCameraPro.API.Controllers
         }
 
         // ============================
-        // 🤖 HuggingFace AI (STABLE)
+        // 🤖 HuggingFace AI (FREE + WORKING)
         // ============================
         private async Task<string> AnalyzeImage(string filePath)
         {
@@ -57,13 +57,13 @@ namespace SmartCameraPro.API.Controllers
                 return "AI Error: HuggingFace token not found";
 
             using var client = new HttpClient();
-            client.Timeout = TimeSpan.FromSeconds(90);
+            client.Timeout = TimeSpan.FromSeconds(60);
 
             client.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", hfToken);
 
-            // ✅ STABLE ENDPOINT FOR FREE TOKENS
-            var url = "https://api-inference.huggingface.co/models/Salesforce/blip-image-captioning-large";
+            // ✅ FREE-TIER SUPPORTED MODEL
+            var url = "https://router.huggingface.co/hf-inference/models/nlpconnect/vit-gpt2-image-captioning";
 
             byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
@@ -73,10 +73,6 @@ namespace SmartCameraPro.API.Controllers
 
             var response = await client.PostAsync(url, content);
             var json = await response.Content.ReadAsStringAsync();
-
-            // 🟡 Model cold start handling
-            if (json.Contains("loading", StringComparison.OrdinalIgnoreCase))
-                return "AI is loading, please try again in a few seconds";
 
             if (!response.IsSuccessStatusCode)
                 return $"AI Error: {response.StatusCode} - {json}";
