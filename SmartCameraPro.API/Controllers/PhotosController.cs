@@ -56,7 +56,8 @@ namespace SmartCameraPro.API.Controllers
         private async Task<string> AnalyzeImage(string filePath)
         {
             // 🔐 Get token from environment variable
-            string hfToken = Environment.GetEnvironmentVariable("smart-camera");
+            string hfToken = Environment.GetEnvironmentVariable("HF_TOKEN");
+
 
             if (string.IsNullOrEmpty(hfToken))
                 return "AI Error: HuggingFace token not found";
