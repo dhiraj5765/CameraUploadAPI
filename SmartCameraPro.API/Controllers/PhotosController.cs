@@ -53,39 +53,34 @@ namespace SmartCameraPro.API.Controllers
         // ============================
         // 🤖 HuggingFace AI Method
         // ============================
-        private async Task<string> AnalyzeImage(string filePath)
-        {
-            // 🔐 Get token from environment variable
-            string hfToken = Environment.GetEnvironmentVariable("HF_TOKEN");
+       private async Task<string> AnalyzeImage(string filePath)
+{
+    string hfToken = Environment.GetEnvironmentVariable("HF_TOKEN");
 
+    if (string.IsNullOrWhiteSpace(hfToken))
+        return "AI Error: HuggingFace token not found";
 
-            if (string.IsNullOrEmpty(hfToken))
-                return "AI Error: HuggingFace token not found";
+    using var client = new HttpClient();
+    client.DefaultRequestHeaders.Authorization =
+        new AuthenticationHeaderValue("Bearer", hfToken);
 
-            using var client = new HttpClient();
+    // ✅ THIS IS THE CRITICAL LINE
+    var url = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-large";
 
-            client.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", hfToken);
+    byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
 
-            // ✅ Correct HuggingFace Router URL
-          var url = "https://router.huggingface.co/hf-inference/models/Salesforce/blip-image-captioning-large";
+    using var content = new ByteArrayContent(imageBytes);
+    content.Headers.ContentType =
+        new MediaTypeHeaderValue("application/octet-stream");
 
+    var response = await client.PostAsync(url, content);
+    var json = await response.Content.ReadAsStringAsync();
 
-            byte[] imageBytes = await System.IO.File.ReadAllBytesAsync(filePath);
+    if (!response.IsSuccessStatusCode)
+        return $"AI Error: {response.StatusCode} - {json}";
 
-            using var content = new ByteArrayContent(imageBytes);
-            content.Headers.ContentType =
-                new MediaTypeHeaderValue("application/octet-stream");
-
-            var response = await client.PostAsync(url, content);
-            var json = await response.Content.ReadAsStringAsync();
-
-            if (!response.IsSuccessStatusCode)
-                return $"AI Error: {response.StatusCode} - {json}";
-
-            dynamic data = JsonConvert.DeserializeObject(json);
-
-            return data[0].generated_text.ToString();
-        }
-    }
+    dynamic data = Newtonsoft.Json.JsonConvert.DeserializeObject(json);
+    return data[0].generated_text.ToString();
+}
+}
 }
